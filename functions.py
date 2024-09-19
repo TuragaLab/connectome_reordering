@@ -49,13 +49,11 @@ def objective_function(positions, source_indices, target_indices, edge_weights, 
     pos_target = positions[target_indices]
 
     delta = pos_target - pos_source
-
-    beta = 10.0
-    sigmoid = safe_sigmoid(beta * delta)
+    delta /= jnp.std(delta)
+    beta = 2.0
+    sigmoid = jax.nn.sigmoid(beta * delta)
     # Compute the weighted sum
     total_forward_weight = jnp.sum(edge_weights * sigmoid)
-    # if epoch % 10 == 0:
-    #     jax.debug.print("Sig{y} | {z} | {q}", y=jnp.sum(sigmoid), z=jnp.sum(pos_source), q=jnp.sum(pos_target))
 
     return -total_forward_weight
 
