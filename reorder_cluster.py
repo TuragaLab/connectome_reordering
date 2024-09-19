@@ -91,7 +91,9 @@ def run(run_idx):
         # Optional: Print progress every 100 epochs
         if epoch % 100 == 0:
             print(f"Epoch {epoch}, Loss: {-loss}")
-            functions.calculate_metric(positions)
+            functions.calculate_metric(
+                positions, source_indices, target_indices, edge_weights, epoch
+            )
     jnp.save(f"positions_{run_idx}.npy", positions)
 
 
