@@ -39,7 +39,7 @@ def run(run_idx):
     edge_weights = edge_weights / total_edge_weight
 
     num_nodes = len(unique_nodes)
-    key = random.PRNGKey(0)
+    key = random.PRNGKey(run_idx)
     positions = random.uniform(key, shape=(num_nodes,))
 
     sorted_indices = jnp.argsort(positions)
