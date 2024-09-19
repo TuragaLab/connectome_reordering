@@ -92,7 +92,7 @@ def run(run_idx):
         if epoch % 100 == 0:
             print(f"Epoch {epoch}, Loss: {-loss}")
             functions.calculate_metric(
-                positions, source_indices, target_indices, edge_weights, epoch
+                positions, num_nodes, source_indices, target_indices, edge_weights
             )
     jnp.save(f"positions_{run_idx}.npy", positions)
 
