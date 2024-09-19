@@ -39,7 +39,7 @@ def run(run_idx):
     edge_weights = edge_weights / total_edge_weight
 
     num_nodes = len(unique_nodes)
-    key = random.PRNGKey(run_idx)
+    key = random.PRNGKey(int(run_idx))
     positions = random.uniform(key, shape=(num_nodes,))
 
     sorted_indices = jnp.argsort(positions)
@@ -65,7 +65,7 @@ def run(run_idx):
     objective_grad = jax.grad(functions.objective_function)
 
     # Define the optimizer
-    optimizer = optax.adam(learning_rate=0.005)
+    optimizer = optax.adam(learning_rate=0.01)
 
     # Initialize optimizer state
     opt_state = optimizer.init(positions)
@@ -76,8 +76,9 @@ def run(run_idx):
         f"Percentage of Forward Edge Weight (Initial): {percentage_forward_initial:.2f}%"
     )
 
-    num_epochs = 10000
-
+    num_epochs = 20000
+    best_acc = 0
+    best_positions = positions
     for epoch in range(num_epochs):
         # Compute gradients
         loss, grads = jax.value_and_grad(functions.objective_function)(
@@ -91,11 +92,15 @@ def run(run_idx):
         # Optional: Print progress every 100 epochs
         if epoch % 100 == 0:
             print(f"Epoch {epoch}, Loss: {-loss}")
-            functions.calculate_metric(
+            metric = functions.calculate_metric(
                 positions, num_nodes, source_indices, target_indices, edge_weights
             )
-    jnp.save(f"positions_{run_idx}.npy", positions)
+            if metric > best_acc:
+                best_acc = metric
+                best_positions = positions
+            print("Best: ", best_acc)
 
+    jnp.save(f"positions_{run_idx}_{best_acc}.npy", best_positions)
 
 if __name__ == "__main__":
     import sys
