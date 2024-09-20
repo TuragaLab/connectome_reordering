@@ -101,6 +101,30 @@ def run(run_idx):
     ordered_nodes_df = pd.DataFrame({"Node ID": ordered_node_ids})
     ordered_nodes_df.to_csv(f"ordered_nodes_{best_metric}_{run_idx}.csv", index=False)
 
+    best_ordering, best_weight = functions.simulated_annealing(
+        positions,
+        w,
+        source_indices,
+        target_indices,
+        edge_weights,
+        initial_temp=1.0,
+        final_temp=0.001,
+        max_iter=100000,
+    )
+    node_order = jnp.zeros(num_nodes)
+    node_order = node_order.at[best_ordering].set(jnp.arange(num_nodes))
+    source_order = node_order[source_indices]
+    target_order = node_order[target_indices]
+    print("Annealing: ")
+    functions.calculate_node_forward(source_order, target_order, edge_weights)
+
+    ordered_node_ids = [index_to_node_id[int(idx)] for idx in best_ordering]
+
+    ordered_nodes_df = pd.DataFrame({"Node ID": ordered_node_ids})
+    ordered_nodes_df.to_csv(
+        f"annealing_ordered_nodes_{best_metric}_{run_idx}.csv", index=False
+    )
+
 
 if __name__ == "__main__":
     import sys
