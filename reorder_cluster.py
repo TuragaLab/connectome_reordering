@@ -49,15 +49,25 @@ def run(run_idx):
 
     num_epochs = 10000
     best_metric = 0
+
+    @jax.jit
+    def optimization_step(
+        positions, opt_state, source_indices, target_indices, edge_weights
+    ):
+        loss, grads = jax.value_and_grad(functions.objective_function)(
+            positions, source_indices, target_indices, edge_weights
+        )
+        updates, opt_state = optimizer.update(grads, opt_state)
+        positions = optax.apply_updates(positions, updates)
+        return positions, opt_state, loss
+
     for epoch in range(num_epochs):
-        positions, opt_state, loss = functions.optimization_step(
+        positions, opt_state, loss = optimization_step(
             positions,
             opt_state,
             source_indices,
             target_indices,
             edge_weights,
-            epoch,
-            optimizer,
         )
 
         if jnp.isnan(loss) or jnp.isinf(loss):
