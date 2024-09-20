@@ -48,7 +48,7 @@ def run(run_idx):
     opt_state = optimizer.init(positions)
 
     num_epochs = 10000
-
+    best_metric = 0
     for epoch in range(num_epochs):
         positions, opt_state, loss = functions.optimization_step(
             positions,
@@ -70,9 +70,12 @@ def run(run_idx):
         # Optional: Print progress every 100 epochs
         if epoch % 100 == 0:
             print(f"Epoch {epoch}, Loss: {-loss}")
-            functions.calculate_metric(
+            metric = functions.calculate_metric(
                 positions, num_nodes, source_indices, target_indices, edge_weights
             )
+            if metric > best_metric:
+                best_metric = metric
+                print(f"New best metric: {best_metric:.2f}")
 
     # Map back to original node IDs and save the ordering
     sorted_indices = jnp.argsort(positions)
@@ -82,7 +85,7 @@ def run(run_idx):
     import pandas as pd
 
     ordered_nodes_df = pd.DataFrame({"Node ID": ordered_node_ids})
-    ordered_nodes_df.to_csv(f"ordered_nodes_{run_idx}.csv", index=False)
+    ordered_nodes_df.to_csv(f"ordered_nodes_{best_metric}_{run_idx}.csv", index=False)
 
 
 if __name__ == "__main__":
