@@ -9,13 +9,14 @@ We utilize **JAX** for efficient automatic differentiation and high-performance 
 ---
 
 ## **Project Structure**
-
+```
 ├── connectome_graph.csv # Input data: The directed graph representing neuron connections - download from Codex
 ├── script.py # Main optimization script 
 ├── functions.py # Utility functions for optimization and evaluation 
 ├── README.md # Project documentation 
 ├── requirements.txt # Python dependencies 
 └── ordered_nodes_0.csv # Example output: optimized neuron ordering
+```
 
 ## **Usage**
 
