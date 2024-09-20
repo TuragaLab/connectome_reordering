@@ -43,7 +43,7 @@ def calculate_metric(
 
 
 # @jax.jit
-def objective_function(positions, source_indices, target_indices, edge_weights, epoch):
+def objective_function(positions, source_indices, target_indices, edge_weights):
     # Get positions of source and target nodes
     pos_source = positions[source_indices]
     pos_target = positions[target_indices]
@@ -60,16 +60,3 @@ def objective_function(positions, source_indices, target_indices, edge_weights, 
     regularization = regularization_strength * jnp.sum(positions**2)
 
     return -total_forward_weight + regularization
-
-
-@jax.jit
-def optimization_step(
-    positions, opt_state, source_indices, target_indices, edge_weights, epoch, optimizer
-):
-    loss, grads = jax.value_and_grad(objective_function)(
-        positions, source_indices, target_indices, edge_weights, epoch
-    )
-    updates, opt_state = optimizer.update(grads, opt_state)
-    positions = optax.apply_updates(positions, updates)
-    # positions = functions.normalize_positions(positions)
-    return positions, opt_state, loss
