@@ -37,37 +37,41 @@ def run(run_idx):
 
     num_nodes = len(unique_nodes)
     key = random.PRNGKey(int(run_idx))
-    positions = random.uniform(key, shape=(num_nodes,), minval=-0.1, maxval=0.1)
-
+    embedding_dim = 5  # Adjust the embedding dimensionality
+    positions = random.uniform(
+        key, shape=(num_nodes, embedding_dim), minval=-0.1, maxval=0.1
+    )
+    key, subkey = random.split(key)
+    w = random.uniform(subkey, shape=(embedding_dim,))
     # Define the optimizer with gradient clipping
     optimizer = optax.chain(
         optax.clip_by_global_norm(1.0), optax.adam(learning_rate=0.001)
     )
 
     # Initialize optimizer state
-    opt_state = optimizer.init(positions)
+    opt_state = optimizer.init((positions, w))
 
     num_epochs = 10000
     best_metric = 0
 
     @jax.jit
     def optimization_step(
-        positions, opt_state, source_indices, target_indices, edge_weights
+        positions, w, opt_state, source_indices, target_indices, edge_weights
     ):
-        loss, grads = jax.value_and_grad(functions.objective_function)(
-            positions, source_indices, target_indices, edge_weights
+        # Compute loss and gradients for both positions and w
+        loss, grads = jax.value_and_grad(functions.objective_function, argnums=(0, 1))(
+            positions, w, source_indices, target_indices, edge_weights
         )
+
+        # Update positions and w
         updates, opt_state = optimizer.update(grads, opt_state)
-        positions = optax.apply_updates(positions, updates)
-        return positions, opt_state, loss
+        positions, w = optax.apply_updates((positions, w), updates)
+
+        return positions, w, opt_state, loss
 
     for epoch in range(num_epochs):
-        positions, opt_state, loss = optimization_step(
-            positions,
-            opt_state,
-            source_indices,
-            target_indices,
-            edge_weights,
+        positions, w, opt_state, loss = optimization_step(
+            positions, w, opt_state, source_indices, target_indices, edge_weights
         )
 
         if jnp.isnan(loss) or jnp.isinf(loss):
@@ -81,14 +85,14 @@ def run(run_idx):
         if epoch % 100 == 0:
             print(f"Epoch {epoch}, Loss: {-loss}")
             metric = functions.calculate_metric(
-                positions, num_nodes, source_indices, target_indices, edge_weights
+                positions, w, num_nodes, source_indices, target_indices, edge_weights
             )
             if metric > best_metric:
                 best_metric = metric
                 print(f"New best metric: {best_metric:.2f}")
 
     # Map back to original node IDs and save the ordering
-    sorted_indices = jnp.argsort(positions)
+    sorted_indices = jnp.argsort(np.dot(positions, w))
     ordered_node_ids = [index_to_node_id[int(idx)] for idx in sorted_indices]
 
     # Save the ordering to a CSV file
