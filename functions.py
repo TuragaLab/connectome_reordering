@@ -1,13 +1,29 @@
 import jax
 import jax.numpy as jnp
+import optax
 
 
 def normalize_positions(positions):
     # Normalize positions to have zero mean and unit variance
     mean = jnp.mean(positions)
-    std = jnp.std(positions) + 1e-8  # Add epsilon to avoid division by zero
+    std = jnp.std(positions) + 1e-8  # Avoid division by zero
     positions = (positions - mean) / std
     return positions
+
+
+def calculate_node_forward(source_orders, target_orders, edge_weights):
+    forward_edges = source_orders < target_orders
+
+    # Calculate total forward edge weight
+    forward_edge_weight = jnp.sum(edge_weights * forward_edges)
+
+    # Calculate total edge weight (for normalization)
+    total_edge_weight = jnp.sum(edge_weights)
+
+    # Calculate percentage of forward edge weight
+    percentage_forward = 100 * (forward_edge_weight / total_edge_weight)
+
+    print(f"Percentage of forward edge weight: {percentage_forward:.2f}%")
 
 
 def calculate_metric(
@@ -18,45 +34,42 @@ def calculate_metric(
 
     # Sort node indices based on positions
     sorted_indices = jnp.argsort(final_positions)
-
-    # Map back to node IDs
-    # ordered_node_ids = [index_to_node_id[int(idx)] for idx in sorted_indices]
-
-    # Create a mapping from node index to order in the final sequence
     node_order = jnp.zeros(num_nodes)
     node_order = node_order.at[sorted_indices].set(jnp.arange(num_nodes))
 
-    # Compute the direction of each edge in the final ordering
-    edge_directions = node_order[target_indices] - node_order[source_indices]
-
-    # Edges pointing forward have positive edge_directions
-    forward_edges = edge_directions > 0
-
-    # Compute the total forward edge weight
-    total_forward_weight = jnp.sum(edge_weights * forward_edges)
-    total_edge_weight = jnp.sum(edge_weights)
-
-    print(f"Total Forward Edge Weight: {total_forward_weight}")
-    print(
-        f"Percentage of Forward Edge Weight: {100 * float(total_forward_weight) / float(total_edge_weight):.2f}%"
-    )
+    source_order = node_order[source_indices]
+    target_order = node_order[target_indices]
+    calculate_node_forward(source_order, target_order, edge_weights)
 
 
-@jax.jit
+# @jax.jit
 def objective_function(positions, source_indices, target_indices, edge_weights, epoch):
     # Get positions of source and target nodes
     pos_source = positions[source_indices]
     pos_target = positions[target_indices]
 
     delta = pos_target - pos_source
-    delta /= jnp.std(delta)
-    beta = 2.0
+    beta = 5.0  # Adjusted beta for stability
     sigmoid = jax.nn.sigmoid(beta * delta)
+
     # Compute the weighted sum
     total_forward_weight = jnp.sum(edge_weights * sigmoid)
 
-    return -total_forward_weight
+    # Add L2 regularization term
+    regularization_strength = 0.0001
+    regularization = regularization_strength * jnp.sum(positions**2)
+
+    return -total_forward_weight + regularization
 
 
-def safe_sigmoid(x):
-    return jnp.where(x >= 0, 1 / (1 + jnp.exp(-x)), jnp.exp(x) / (1 + jnp.exp(x)))
+@jax.jit
+def optimization_step(
+    positions, opt_state, source_indices, target_indices, edge_weights, epoch, optimizer
+):
+    loss, grads = jax.value_and_grad(objective_function)(
+        positions, source_indices, target_indices, edge_weights, epoch
+    )
+    updates, opt_state = optimizer.update(grads, opt_state)
+    positions = optax.apply_updates(positions, updates)
+    # positions = functions.normalize_positions(positions)
+    return positions, opt_state, loss
