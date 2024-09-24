@@ -61,17 +61,13 @@ def objective_function(positions, w, source_indices, target_indices, edge_weight
     delta = proj_target - proj_source
 
     # Sigmoid to encourage proj_source < proj_target
-    beta = 5.0
-    sigmoid = jax.nn.sigmoid(beta * delta)
+    beta = 1
+    sigmoid = jax.nn.hard_tanh(beta * delta)
 
     # Compute the total forward weight
     total_forward_weight = jnp.sum(edge_weights * sigmoid)
 
-    # Add L2 regularization for both the embeddings and the projection vector w
-    regularization_strength = 0.0001
-    regularization = regularization_strength * (jnp.sum(positions**2) + jnp.sum(w**2))
-
-    return -total_forward_weight + regularization
+    return -total_forward_weight
 
 
 # Function to compute total forward edge weight given an ordering
@@ -146,11 +142,10 @@ def simulated_annealing(
     w,
     source_indices,
     target_indices,
-    edge_weights_normalized,
+    edge_weights,
     initial_temp=1.0,
     final_temp=0.001,
     max_iter=10000,
-    edge_weights=None,
 ):
     key = random.PRNGKey(0)
 
@@ -161,7 +156,7 @@ def simulated_annealing(
     # Initial conditions
     current_ordering = initial_ordering
     current_weight = compute_total_forward_weight(
-        current_ordering, source_indices, target_indices, edge_weights_normalized
+        current_ordering, source_indices, target_indices, edge_weights
     )
     best_ordering = current_ordering
     best_weight = current_weight
