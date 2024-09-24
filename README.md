@@ -24,10 +24,6 @@ Once installed, you can run the optimization using the following command:
 
 python script.py <run_idx>
 
-
-## **Usage**
-The optimization uses gradient-based optimization to maximize the feedforward edge weight. Here's a high-level overview of the process:
-
 ## **Optimization Details**
 Neuron Representation: Each neuron is assigned a scalar position, initialized randomly.
 Loss Function: The loss function is the negative feedforward edge weight, penalizing backward edges
