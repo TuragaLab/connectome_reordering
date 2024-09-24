@@ -44,7 +44,7 @@ def calculate_metric(
     return calculate_node_forward(source_order, target_order, edge_weights)
 
 
-@jax.jit
+# @jax.jit
 def objective_function(positions, w, source_indices, target_indices, edge_weights):
     # Project each neuron embedding onto the learnable direction w
     projections = jnp.dot(
@@ -173,3 +173,5 @@ def simulated_annealing(
 
     _, _, _, _, best_ordering, best_weight = final_state
     return best_ordering, best_weight
+=======
+>>>>>>> 228b6aa7b4712a7c56125ad09b621df46998e7d7

@@ -24,20 +24,22 @@ Once installed, you can run the optimization using the following command:
 
 python script.py <run_idx>
 
-
-## **Usage**
-The optimization uses gradient-based optimization to maximize the feedforward edge weight. Here's a high-level overview of the process:
-
 ## **Optimization Details**
-Neuron Representation: Each neuron is assigned a scalar position, initialized randomly.
-Loss Function: The loss function is the negative feedforward edge weight, penalizing backward edges
-Optimizer: We use the Adam optimizer from Optax with gradient clipping to handle potential exploding gradients.
-Gradient-Based Updates: Neuron positions are updated iteratively by minimizing the loss using JAX's automatic differentiation.
-Evaluation: The model evaluates the percentage of feedforward edge weight after each update.
+
+Each neuron is assigned a scalar position, initialized randomly.
+
+The loss function is the negative feedforward edge weight, penalizing backward edges
+
+Optimizer: Adam optimizer from Optax with gradient clipping to handle potential exploding gradients.
+
+Neuron positions are updated iteratively by minimizing the loss using JAX's automatic differentiation.
+
+The model evaluates the percentage of feedforward edge weight after each update.
 
 ## **Performance Evaluation**
 The performance of the model is evaluated by calculating the percentage of forward edge weight (i.e., the proportion of edges that point forward in the optimized neuron ordering).
 
 Metrics:
 Total Feedforward Edge Weight: The sum of weights for all edges where Source Position < Target Position.
+
 Percentage of Forward Edge Weight: The forward edge weight as a percentage of the total edge weight.
