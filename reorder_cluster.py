@@ -36,14 +36,19 @@ def run(run_idx):
     edge_weights = edge_weights / max_edge_weight
 
     num_nodes = len(unique_nodes)
-    key = random.PRNGKey(int(run_idx))
+    key = random.PRNGKey(int(run_idx)+320)
     embedding_dim = 5  # Adjust the embedding dimensionality
     positions = random.uniform(
         key, shape=(num_nodes, embedding_dim), minval=-0.1, maxval=0.1
     )
     key, subkey = random.split(key)
     w = random.uniform(subkey, shape=(embedding_dim,))
-    # Define the optimizer with gradient clipping
+    # Define the optimizer with gradient clipping)
+
+    num_epochs = 80000
+    exponential_decay_scheduler = optax.exponential_decay(init_value=0.0005, transition_steps=num_epochs,
+                                                      decay_rate=0.999, transition_begin=int(num_epochs*0.2),
+                                                      staircase=False)
     optimizer = optax.chain(
         optax.clip_by_global_norm(1.0), optax.adam(learning_rate=0.001)
     )
@@ -51,7 +56,6 @@ def run(run_idx):
     # Initialize optimizer state
     opt_state = optimizer.init((positions, w))
 
-    num_epochs = 10000
     best_metric = 0
 
     @jax.jit
@@ -99,7 +103,7 @@ def run(run_idx):
     import pandas as pd
 
     ordered_nodes_df = pd.DataFrame({"Node ID": ordered_node_ids})
-    ordered_nodes_df.to_csv(f"ordered_nodes_{best_metric}_{run_idx}.csv", index=False)
+    ordered_nodes_df.to_csv(f"./checkpoints/ordered_nodes_{best_metric}_{run_idx}.csv", index=False)
 
 
 if __name__ == "__main__":
