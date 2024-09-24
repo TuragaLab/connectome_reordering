@@ -44,7 +44,7 @@ def calculate_metric(
     return calculate_node_forward(source_order, target_order, edge_weights)
 
 
-@jax.jit
+# @jax.jit
 def objective_function(positions, w, source_indices, target_indices, edge_weights):
     # Project each neuron embedding onto the learnable direction w
     projections = jnp.dot(
@@ -68,9 +68,9 @@ def objective_function(positions, w, source_indices, target_indices, edge_weight
     total_forward_weight = jnp.sum(edge_weights * sigmoid)
 
     # Add L2 regularization for both the embeddings and the projection vector w
-    regularization_strength = 0.0001
+    regularization_strength = 100
     regularization = regularization_strength * (jnp.sum(positions**2) + jnp.sum(w**2))
-
+    # jax.debug.print("{x} | {y}", x=regularization, y=total_forward_weight)
     return -total_forward_weight + regularization
 
 
@@ -84,97 +84,3 @@ def compute_total_forward_weight(
     forward_edges = edge_directions > 0
     total_forward_weight = jnp.sum(edge_weights_normalized * forward_edges)
     return total_forward_weight
-
-
-# Function to swap two indices in the ordering array
-def swap_ordering(ordering, i, j):
-    ordering = ordering.at[i].set(ordering[j])
-    ordering = ordering.at[j].set(ordering[i])
-    return ordering
-
-
-# Simulated annealing step function (JAX-compatible)
-@jit
-def simulated_annealing_step(i, state, source_indices, target_indices, edge_weights):
-    key, temp, current_ordering, current_weight, best_ordering, best_weight = state
-
-    # Generate two random indices to swap in the ordering
-    key, subkey = random.split(key)
-    num_nodes = len(current_ordering)
-    idx1, idx2 = random.choice(subkey, num_nodes, shape=(2,), replace=False)
-
-    # Swap nodes in the ordering
-    new_ordering = swap_ordering(current_ordering, idx1, idx2)
-
-    # Compute the new forward weight
-    new_weight = compute_total_forward_weight(
-        new_ordering, source_indices, target_indices, edge_weights
-    )
-    delta_weight = new_weight - current_weight
-
-    # Compute the acceptance probability
-    accept_prob = jnp.exp(delta_weight / temp)
-    key, subkey = random.split(key)
-    rand = random.uniform(subkey)
-    should_accept = (delta_weight > 0) | (rand < accept_prob)
-
-    # Update current_ordering and current_weight
-    current_ordering = jax.lax.cond(
-        should_accept, lambda _: new_ordering, lambda _: current_ordering, operand=None
-    )
-    current_weight = jax.lax.cond(
-        should_accept, lambda _: new_weight, lambda _: current_weight, operand=None
-    )
-
-    # Update the best solution if the new solution is better
-    better_solution = new_weight > best_weight
-    best_ordering = jax.lax.cond(
-        better_solution, lambda _: new_ordering, lambda _: best_ordering, operand=None
-    )
-    best_weight = jax.lax.cond(
-        better_solution, lambda _: new_weight, lambda _: best_weight, operand=None
-    )
-
-    temp = temp * 0.995
-
-    return key, temp, current_ordering, current_weight, best_ordering, best_weight
-
-
-# Simulated annealing loop (JAX-compatible)
-def simulated_annealing(
-    positions,
-    w,
-    source_indices,
-    target_indices,
-    edge_weights_normalized,
-    initial_temp=1.0,
-    final_temp=0.001,
-    max_iter=10000,
-    edge_weights=None,
-):
-    key = random.PRNGKey(0)
-
-    # Compute initial ordering based on projections
-    projections = jnp.dot(positions, w)
-    initial_ordering = jnp.argsort(projections)
-
-    # Initial conditions
-    current_ordering = initial_ordering
-    current_weight = compute_total_forward_weight(
-        current_ordering, source_indices, target_indices, edge_weights_normalized
-    )
-    best_ordering = current_ordering
-    best_weight = current_weight
-    temp = initial_temp
-
-    # Simulated annealing loop
-    def body_fn(i, state):
-        return simulated_annealing_step(
-            i, state, source_indices, target_indices, edge_weights
-        )
-
-    state = (key, temp, current_ordering, current_weight, best_ordering, best_weight)
-    final_state = jax.lax.fori_loop(0, max_iter, body_fn, state)
-
-    _, _, _, _, best_ordering, best_weight = final_state
-    return best_ordering, best_weight
