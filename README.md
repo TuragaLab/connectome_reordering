@@ -41,4 +41,5 @@ The performance of the model is evaluated by calculating the percentage of forwa
 
 Metrics:
 Total Feedforward Edge Weight: The sum of weights for all edges where Source Position < Target Position.
+
 Percentage of Forward Edge Weight: The forward edge weight as a percentage of the total edge weight.
