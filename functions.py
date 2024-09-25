@@ -45,7 +45,7 @@ def calculate_metric(
 
 
 @jax.jit
-def objective_function(positions, w, source_indices, target_indices, edge_weights):
+def objective_function(positions, w, beta, source_indices, target_indices, edge_weights):
     # Project each neuron embedding onto the learnable direction w
     projections = jnp.dot(
         positions, w
@@ -54,20 +54,12 @@ def objective_function(positions, w, source_indices, target_indices, edge_weight
     # Get the scalar projections for the source and target neurons
     proj_source = projections[source_indices]
     proj_target = projections[target_indices]
-
-    # distances = jnp.linalg.norm(proj_target - proj_source, axis=-1)
-    # beta = 5.0 / (1.0 + distances)
     # Use the difference between source and target projections
-    delta = proj_target - proj_source
+    delta = proj_source - proj_target
 
-    # Sigmoid to encourage proj_source < proj_target
-    beta = 1
-    sigmoid = jax.nn.hard_tanh(beta * delta)
+    sigmoid = jax.nn.tanh(delta * beta)
 
-    # Compute the total forward weight
-    total_forward_weight = jnp.sum(edge_weights * sigmoid)
-
-    return -total_forward_weight
+    return total_forward_weight
 
 
 # Function to compute total forward edge weight given an ordering
