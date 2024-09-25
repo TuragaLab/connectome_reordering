@@ -37,62 +37,85 @@ def run(run_idx):
 
     num_nodes = len(unique_nodes)
     key = random.PRNGKey(int(run_idx))
-    embedding_dim = 5  # Adjust the embedding dimensionality
-    positions = random.uniform(
-        key, shape=(num_nodes, embedding_dim), minval=-0.1, maxval=0.1
+    embedding_dim = 4  # Adjust the embedding dimensionality
+    graph_positions = functions.GraphPermutation(
+        key, n_in=4, n_embed=4, n_neurons=num_nodes
     )
-    key, subkey = random.split(key)
-    w = random.uniform(subkey, shape=(embedding_dim,))
+    features = jnp.stack(
+        (source_indices, target_indices, target_indices - source_indices, edge_weights),
+        axis=-1,
+    )
     # Define the optimizer with gradient clipping
     optimizer = optax.chain(
         optax.clip_by_global_norm(1.0), optax.adam(learning_rate=0.001)
     )
 
     # Initialize optimizer state
-    opt_state = optimizer.init((positions, w))
+    num_epochs = 20000
+    import equinox as eqx
+
+    exponential_decay_scheduler = optax.exponential_decay(
+        init_value=0.005,
+        transition_steps=num_epochs,
+        decay_rate=0.98,
+        transition_begin=int(num_epochs * 0.25),
+        staircase=False,
+    )
+
+    optimizer = optax.chain(
+        optax.clip_by_global_norm(1.0),
+        optax.adam(learning_rate=exponential_decay_scheduler),
+    )
+
+    # Initialize optimizer state
+
+    opt_state = optimizer.init(eqx.filter(graph_positions, eqx.is_array))
 
     num_epochs = 10000
     best_metric = 0
 
-    @jax.jit
     def optimization_step(
-        positions, w, opt_state, source_indices, target_indices, edge_weights
+        model, features, opt_state, source_indices, target_indices, edge_weights
     ):
         # Compute loss and gradients for both positions and w
-        loss, grads = jax.value_and_grad(functions.objective_function, argnums=(0, 1))(
-            positions, w, source_indices, target_indices, edge_weights
+        loss, grads = eqx.filter_value_and_grad(functions.graph_objective_function)(
+            model, features, source_indices, target_indices, edge_weights
         )
 
         # Update positions and w
         updates, opt_state = optimizer.update(grads, opt_state)
-        positions, w = optax.apply_updates((positions, w), updates)
+        model = eqx.apply_updates(model, updates)
 
-        return positions, w, opt_state, loss
+        return model, opt_state, loss
 
+    # Training loop
     for epoch in range(num_epochs):
-        positions, w, opt_state, loss = optimization_step(
-            positions, w, opt_state, source_indices, target_indices, edge_weights
+        graph_positions, opt_state, loss = optimization_step(
+            graph_positions,
+            features,
+            opt_state,
+            source_indices,
+            target_indices,
+            edge_weights,
         )
 
-        if jnp.isnan(loss) or jnp.isinf(loss):
-            print("NaN or Inf detected in loss.")
-            break
-        if jnp.any(jnp.isnan(positions)) or jnp.any(jnp.isinf(positions)):
-            print("NaN or Inf detected in positions.")
-            break
-
-        # Optional: Print progress every 100 epochs
         if epoch % 100 == 0:
             print(f"Epoch {epoch}, Loss: {-loss}")
-            metric = functions.calculate_metric(
-                positions, w, num_nodes, source_indices, target_indices, edge_weights
+            functions.calculate_metric_graph(
+                graph_positions,
+                features,
+                num_nodes,
+                source_indices,
+                target_indices,
+                edge_weights,
             )
-            if metric > best_metric:
-                best_metric = metric
-                print(f"New best metric: {best_metric:.2f}")
 
     # Map back to original node IDs and save the ordering
-    sorted_indices = jnp.argsort(np.dot(positions, w))
+    # final_positions = jnp.dot(positions, w)
+    output_positions = graph_positions(features, source_indices)
+
+    # Sort node indices based on positions
+    sorted_indices = jnp.argsort(output_positions)
     ordered_node_ids = [index_to_node_id[int(idx)] for idx in sorted_indices]
 
     # Save the ordering to a CSV file
