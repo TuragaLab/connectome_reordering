@@ -1,3 +1,5 @@
+Heavily inspired by "Connectivity Matrix Seriation via Relaxation" by Alexander Borst: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011904
+
 # **Maximally Feedforward Neuron Ordering using JAX**
 https://codex.flywire.ai/app/mfas_challenge
 
