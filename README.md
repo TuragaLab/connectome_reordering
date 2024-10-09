@@ -8,6 +8,8 @@ This project focuses on optimizing the ordering of neurons from the **FlyWire Co
 
 We utilize **JAX** for efficient automatic differentiation and high-performance GPU/TPU computing, alongside **Optax** for gradient-based optimization of neuron positions.
 
+To optimize completely, we ended with Monte Carlo random swapping of node positions and checking for improvement (some code for simulated annealing is there, but it doens't seem to help much). Transitioning from something "sophisticated" to something that is very simple but scales well prompted similarity to the bitter lesson- http://www.incompleteideas.net/IncIdeas/BitterLesson.html 
+
 ---
 
 ## **Project Structure**
