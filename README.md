@@ -1,3 +1,5 @@
+Heavily inspired by "Connectivity Matrix Seriation via Relaxation" by Alexander Borst: https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011904
+
 # **Maximally Feedforward Neuron Ordering using JAX**
 https://codex.flywire.ai/app/mfas_challenge
 
@@ -5,6 +7,8 @@ https://codex.flywire.ai/app/mfas_challenge
 This project focuses on optimizing the ordering of neurons from the **FlyWire Connectome** to maximize "feedforward-ness," providing insights into the direction of information flow in the brain. We model the connectome as a directed graph, where the neurons (nodes) are connected by weighted synaptic connections (edges). The goal of this project is to sort the neurons such that the total weight of edges pointing forward is maximized, effectively minimizing the weight of backward edges.
 
 We utilize **JAX** for efficient automatic differentiation and high-performance GPU/TPU computing, alongside **Optax** for gradient-based optimization of neuron positions.
+
+To optimize completely, we ended with Monte Carlo random swapping of node positions and checking for improvement (some code for simulated annealing is there, but it doens't seem to help much). Transitioning from something "sophisticated" to something that is very simple but scales well prompted similarity to the bitter lesson- http://www.incompleteideas.net/IncIdeas/BitterLesson.html 
 
 ---
 
