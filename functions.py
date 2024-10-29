@@ -14,25 +14,35 @@ def normalize_positions(positions):
 
 def calculate_node_forward(source_orders, target_orders, edge_weights):
     forward_edges = source_orders < target_orders
+    negative_edges = source_orders > target_orders
+    zero_edges = source_orders == target_orders
 
     # Calculate total forward edge weight
     forward_edge_weight = jnp.sum(edge_weights * forward_edges)
+    negative_edges_weight = jnp.sum(edge_weights * negative_edges)
+    zero_edges_weight = jnp.sum(edge_weights * zero_edges)
 
     # Calculate total edge weight (for normalization)
     total_edge_weight = jnp.sum(edge_weights)
+    total_edge_weight_negative = jnp.sum(negative_edges_weight)
+    total_edge_weight_zero = jnp.sum(zero_edges_weight)
 
     # Calculate percentage of forward edge weight
     percentage_forward = 100 * (forward_edge_weight / total_edge_weight)
+    percentage_negative = 100 * (total_edge_weight_negative / total_edge_weight)
+    percentage_zero = 100 * (total_edge_weight_zero / total_edge_weight)
 
-    print(f"Percentage of forward edge weight: {percentage_forward:.2f}%")
+    #print(
+    #    f"Percentage of forward edge weight: {percentage_forward:.2f}%, negative edge weight: {percentage_negative:.2f}%, zero edge weight: {percentage_zero:.2f}%"
+    #)
     return percentage_forward
 
 
 def calculate_metric(
-    positions, w, num_nodes, source_indices, target_indices, edge_weights
+    positions, num_nodes, source_indices, target_indices, edge_weights
 ):
     # Get final positions
-    final_positions = jnp.dot(positions, w)
+    final_positions = positions  # jnp.dot(positions, w)
 
     # Sort node indices based on positions
     sorted_indices = jnp.argsort(final_positions)
@@ -46,22 +56,20 @@ def calculate_metric(
 
 @jax.jit
 def objective_function(
-    positions, w, beta, source_indices, target_indices, edge_weights
+    relu_weight, positions, beta, source_indices, target_indices, edge_weights, ranks
 ):
     # Project each neuron embedding onto the learnable direction w
-    projections = jnp.dot(
-        positions, w
-    )  # positions: (num_nodes, embedding_dim), w: (embedding_dim,)
-
-    # Get the scalar projections for the source and target neurons
-    proj_source = projections[source_indices]
-    proj_target = projections[target_indices]
-    # Use the difference between source and target projections
+    proj_source = positions[source_indices]
+    proj_target = positions[target_indices]
     delta = proj_source - proj_target
+    
+    # delta = delta / jnp.linalg.norm(delta)
 
-    sigmoid = jax.nn.tanh(delta * beta)
-    total_forward_weight = jnp.sum(edge_weights * sigmoid)
-    return total_forward_weight
+    sigmoid = jax.nn.sigmoid(beta * delta) #* jax.nn.sigmoid(delta * 10000)
+    relu = 0#jax.nn.relu(delta)# - (relu_weight))
+    # reg = 100 * -jnp.var(positions)
+    total_forward_weight = jnp.sum(edge_weights * (sigmoid + relu_weight * relu))
+    return total_forward_weight #+ reg
 
 
 # Function to compute total forward edge weight given an ordering
@@ -74,3 +82,4 @@ def compute_total_forward_weight(
     forward_edges = edge_directions > 0
     total_forward_weight = jnp.sum(edge_weights_normalized * forward_edges)
     return total_forward_weight
+
